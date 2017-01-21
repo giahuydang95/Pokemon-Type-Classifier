@@ -25,15 +25,15 @@ if __name__ == '__main__':
     os.chdir('/home/huy/Desktop')
     path = os.getcwd()
     
-    pkm = pd.read_csv(path + '/Pokemon.csv')
-    name = (pkm['Name'].values).tolist()
-    
-    useless = ['#', 'Name', 'Legendary', 'Generation', 'Attack']
+    pkm = pd.read_csv(path + '/Pokemon.csv')    
+    useless = ['#', 'Legendary', 'Generation']
     pkm = pkm.drop(useless, axis = 1)
 
     features = pkm.columns
     features = [x.encode('utf-8') for x in features]
-    stat = features[2:]
+    features.remove('Type 1')
+    features.remove('Type 2')
+    stat = features
 
     mm = StandardScaler()
     X = pkm[stat].values
@@ -59,9 +59,13 @@ if __name__ == '__main__':
         types_new[i,:] = d[types[i]]
 
 
-    X_train, X_test, y_train, y_test = train_test_split(X, types_new, test_size = 0.0125)
+    X_train, X_test, y_train, y_test = train_test_split(X, types_new, test_size = 0.125)
     temp = X_test #For latter use
-
+    X_train = np.delete(X_train, [0,3], axis = 1)
+    X_test = np.delete(X_test, [0,3],axis=1)
+    stat.remove('Name')
+    stat.remove('Attack')
+    
     batch_size = 100
     num_labels = len(np.unique(types))
     
@@ -72,6 +76,7 @@ if __name__ == '__main__':
     X_valid = mm.fit_transform(X_valid).astype(np.float32)
     
     graph = tf.Graph()
+#    num_hidden_nodes_1 = 216
     num_hidden_nodes = 512
     dropout = 0.7
     
@@ -95,26 +100,28 @@ if __name__ == '__main__':
         
         layer_1 = tf.nn.relu(tf.matmul(tf_train_dataset, weights_1) + biases_1)
         layer_1 = tf.nn.dropout(layer_1, dropout)
-        
+
         logits = tf.matmul(layer_1, weights_2) + biases_2
 
         C = 5e-7
         R = tf.nn.l2_loss(weights_1) + tf.nn.l2_loss(weights_2) + tf.nn.l2_loss(biases_1) + tf.nn.l2_loss(biases_2)
 
         loss = tf.reduce_mean(
-                          tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + C*R)
+                          tf.nn.sigmoid_cross_entropy_with_logits(logits, tf_train_labels) + C*R)
         
         global_steps = tf.Variable(0)
-        learning_rate = tf.train.exponential_decay(0.4, global_steps, decay_steps=1000, decay_rate=0.5)
+        learning_rate = tf.train.exponential_decay(0.1, global_steps, decay_steps=1000, decay_rate=0.2)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_steps)
         
-        train_prediction = tf.nn.softmax(logits)
+        train_prediction = tf.nn.sigmoid(logits)
+        
         layer1_valid = tf.nn.relu(tf.matmul(tf_valid_dataset, weights_1) + biases_1)
-        valid_prediction = tf.nn.softmax(tf.matmul(layer1_valid, weights_2) + biases_2)
+        valid_prediction = tf.nn.sigmoid(tf.matmul(layer1_valid, weights_2) + biases_2)
+        
         layer_1_test = tf.nn.relu(tf.matmul(tf_test_dataset, weights_1) + biases_1)
-        test_prediction = tf.nn.softmax(tf.matmul(layer_1_test, weights_2) + biases_2)
+        test_prediction = tf.nn.sigmoid(tf.matmul(layer_1_test, weights_2) + biases_2)
 
-    num_steps = 10000
+    num_steps = 12000
 
     def accuracy(predictions, labels):
         return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
@@ -144,7 +151,7 @@ if __name__ == '__main__':
     
     pred = map(int,np.argmax(pred, axis = 1))
     for i in range(len(temp)):
-        print('For HP = {}, Defense = {}, Sp.Attack = {}, Sp.Defense = {}, Speed = {}'.format(temp[i,1],
-                                                      temp[i,2], temp[i,3], temp[i,4], temp[i,5]))
+        print('For {} with stats: HP = {}, Attack = {}, Defense = {}, Sp.Attack = {}, Sp.Defense= {}, Speed = {}'.format(temp[i,0], temp[i,2],
+                                                      temp[i,3], temp[i,4], temp[i,5], temp[i,6], temp[i,7]))
         print('The Pokémon should be type: {}\n'.format(reversed_d[pred[i]]))
         
