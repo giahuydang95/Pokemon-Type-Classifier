@@ -89,9 +89,9 @@ if __name__ == '__main__':
         tf_test_dataset = tf.constant(X_test)
         
         weights_1 = tf.Variable(
-                                tf.truncated_normal([len(stat), num_hidden_nodes]))
+                                tf.truncated_normal([len(stat), num_hidden_nodes], stddev = .04))
         weights_2 = tf.Variable(
-                                tf.truncated_normal([num_hidden_nodes, num_labels]))
+                                tf.truncated_normal([num_hidden_nodes, num_labels], stddev = .04))
         
         biases_1 = tf.Variable(
                                tf.zeros([num_hidden_nodes]))
@@ -107,19 +107,19 @@ if __name__ == '__main__':
         R = tf.nn.l2_loss(weights_1) + tf.nn.l2_loss(weights_2) + tf.nn.l2_loss(biases_1) + tf.nn.l2_loss(biases_2)
 
         loss = tf.reduce_mean(
-                          tf.nn.sigmoid_cross_entropy_with_logits(logits, tf_train_labels) + C*R)
+                          tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels) + C*R)
         
         global_steps = tf.Variable(0)
-        learning_rate = tf.train.exponential_decay(0.1, global_steps, decay_steps=1000, decay_rate=0.2)
+        learning_rate = tf.train.exponential_decay(0.04, global_steps, decay_steps=1000, decay_rate=0.2)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_steps)
         
-        train_prediction = tf.nn.sigmoid(logits)
+        train_prediction = tf.nn.softmax(logits)
         
         layer1_valid = tf.nn.relu(tf.matmul(tf_valid_dataset, weights_1) + biases_1)
-        valid_prediction = tf.nn.sigmoid(tf.matmul(layer1_valid, weights_2) + biases_2)
+        valid_prediction = tf.nn.softmax(tf.matmul(layer1_valid, weights_2) + biases_2)
         
         layer_1_test = tf.nn.relu(tf.matmul(tf_test_dataset, weights_1) + biases_1)
-        test_prediction = tf.nn.sigmoid(tf.matmul(layer_1_test, weights_2) + biases_2)
+        test_prediction = tf.nn.softmax(tf.matmul(layer_1_test, weights_2) + biases_2)
 
     num_steps = 12000
 
@@ -146,12 +146,12 @@ if __name__ == '__main__':
                 print("Validation accuracy: %.1f%%" % accuracy(
                                                            valid_prediction.eval(), y_valid))
         print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), y_test))
-        pred = (test_prediction.eval())
+ #       pred = (test_prediction.eval())
         
     
-    pred = map(int,np.argmax(pred, axis = 1))
-    for i in range(len(temp)):
-        print('For {} with stats: HP = {}, Attack = {}, Defense = {}, Sp.Attack = {}, Sp.Defense= {}, Speed = {}'.format(temp[i,0], temp[i,2],
-                                                      temp[i,3], temp[i,4], temp[i,5], temp[i,6], temp[i,7]))
-        print('The Pokémon should be type: {}\n'.format(reversed_d[pred[i]]))
+#    pred = map(int,np.argmax(pred, axis = 1))
+ #   for i in range(len(temp)):
+ #       print('For {} with stats: HP = {}, Attack = {}, Defense = {}, Sp.Attack = {}, Sp.Defense= {}, Speed = {}'.format(temp[i,0], temp[i,2],
+ #                                                     temp[i,3], temp[i,4], temp[i,5], temp[i,6], temp[i,7]))
+ #       print('The Pokémon should be type: {}\n'.format(reversed_d[pred[i]]))
         
